@@ -38,23 +38,30 @@ label{display:block;margin:12px 0;font-size:13px;color:var(--sub)}
 .err{color:var(--danger);font-size:14px;margin-top:10px;min-height:20px;text-align:center}
 .note{font-size:12.5px;color:var(--sub);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:14px 0}
 .or{color:var(--sub);font-size:13px;margin:22px 0 -10px}
-.cardtile{display:block;width:100%;text-align:left;color:#fff;border-radius:16px;padding:16px 18px;margin:0 0 12px;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.cardtile{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;color:#fff;border-radius:16px;padding:16px 18px;margin:0 0 12px;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 4px 14px rgba(0,0,0,.18)}
 .cardtile .n{font-size:18px;font-weight:700;word-break:break-all}
 .cardtile .b{font-size:13px;opacity:.9;margin-top:2px}
 .cardtile .d{font-family:ui-monospace,Menlo,monospace;letter-spacing:.08em;margin-top:14px;font-size:14px;opacity:.95}
+.cardtile .tl{min-width:0;flex:1}
+.cardtile .thumb{flex:none;width:104px;aspect-ratio:1.586;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.35)}
 .empty{text-align:center;color:var(--sub);padding:56px 0}
 .tools{display:flex;gap:8px;margin:0 0 12px}
 .tools input{flex:1;min-width:0;margin-top:0}
 .tools select{width:auto;max-width:46%;margin-top:0}
 .fab{position:fixed;right:max(16px,calc(50% - 264px));bottom:calc(20px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;font-size:30px;line-height:1;padding:0;box-shadow:0 6px 18px rgba(0,0,0,.3)}
-:root.wallet{--bg:#000;--panel:#1c1c1e;--text:#fff;--sub:#8e8e93;--line:#2c2c2e;--accent:#0a84ff;--danger:#ff453a;color-scheme:dark}
 .wstack{--w:min(calc(100vw - 32px),528px);--h:calc(var(--w) / 1.586);padding-top:4px}
 .wcard{display:flex;flex-direction:column;justify-content:space-between;width:100%;height:var(--h);text-align:left;color:#fff;border:0;border-radius:16px;padding:14px 16px;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 -3px 12px rgba(0,0,0,.45);position:relative}
 .wstack .wcard+.wcard{margin-top:calc(76px - var(--h))}
-.wcard .wt{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
-.wcard .wn{font-size:17px;font-weight:700;word-break:break-all}
+.wcard .wt{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;height:48px;flex:none}
+.wcard .wl{display:flex;align-items:baseline;gap:8px;min-width:0;flex:1}
+.wcard .wn{font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.wcard .w4{font-family:ui-monospace,Menlo,monospace;font-size:14px;letter-spacing:.04em;opacity:.92;white-space:nowrap;flex:none}
 .wcard .wb{font-size:12px;opacity:.9;white-space:nowrap;padding-top:3px}
-.wcard .wd{display:block;font-family:ui-monospace,Menlo,monospace;letter-spacing:.08em;font-size:15px}
+.wcard .wimg{display:flex;flex:1;min-height:0;margin-top:28px;justify-content:center;align-items:center}
+.wcard .wimg img{height:100%;max-width:100%;object-fit:contain;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.wcard{transition:opacity .15s}
+.wcard.peek~.wcard{opacity:.12}
+@media (hover:hover){.wcard:hover~.wcard{opacity:.12}}
 .wcard.solo{box-shadow:0 8px 24px rgba(0,0,0,.45);margin:4px 0 12px}
 .seg{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px}
 .seg button{flex:1;color:var(--text);padding:10px}
@@ -151,7 +158,6 @@ function applyTheme(t){
   theme=t;
   try{localStorage.setItem('cv-theme',t)}catch{}
   document.documentElement.classList.toggle('wallet',t==='wallet');
-  const m=document.querySelector('meta[name=theme-color]');if(m)m.content=t==='wallet'?'#000000':'#2f5bea';
 }
 
 async function persist(){
@@ -349,11 +355,11 @@ function listBody(){
 }
 function wface(c,btn){
   const[a,b]=BCOL[c.brand]||BCOL['その他'];
-  const inner=`<span class="wt"><span class="wn">${esc(c.name)}</span><span class="wb">${esc(c.brand)}</span></span><span class="wd">${esc(maskNum(c.number))}</span>`;
+  const inner=`<span class="wt"><span class="wl"><span class="wn">${esc(c.name)}</span>${c.number?`<span class="w4">•••• ${esc(c.number.slice(-4))}</span>`:''}</span><span class="wb">${esc(c.brand)}</span></span>${c.front?`<span class="wimg"><img src="${esc(c.front)}" alt=""></span>`:''}`;
   return btn?`<button class="wcard" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b}">${inner}</button>`:`<div class="wcard solo" style="--a:${a};--b:${b}">${inner}</div>`;
 }
 function tile(c){const[a,b]=BCOL[c.brand]||BCOL['その他'];
-  return`<button class="cardtile" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b}"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}</div><div class="d">${esc(maskNum(c.number))}</div></button>`}
+  return`<button class="cardtile" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b}"><div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}</div><div class="d">${esc(maskNum(c.number))}</div></div>${c.front?`<img class="thumb" src="${esc(c.front)}" alt="">`:''}</button>`}
 
 function curCard(){return vault.cards.find(c=>c.id===view.id)}
 function detailHTML(){
@@ -363,7 +369,7 @@ function detailHTML(){
   const row=(label,f,disp,has,canHide)=>`<div class="field"><div><small>${label}</small><div class="val">${esc(disp)}</div></div><div class="btns">${canHide&&has?`<button data-act="reveal" data-f="${f}">${r[f]?'隠す':'表示'}</button>`:''}${has?`<button class="copy" data-act="copy" data-f="${f}">コピー</button>`:''}</div></div>`;
   const img=(src,cap)=>src?`<figure><figcaption>${cap}</figcaption><img src="${src}" alt="${cap}" data-act="zoom"></figure>`:`<figure><figcaption>${cap}</figcaption><div class="ph">未登録</div></figure>`;
   return`<header><button data-act="back">‹ 戻る</button><b>${esc(c.name)}</b><button data-act="edit">編集</button></header>
-${theme==='wallet'?wface(c,false):`<div class="cardtile" style="--a:${a};--b:${b};cursor:default"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}</div></div>`}
+${theme==='wallet'?wface(c,false):`<div class="cardtile" style="--a:${a};--b:${b};cursor:default"><div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}</div></div></div>`}
 <div class="imgs">${img(c.front,'表面')}${img(c.back,'裏面')}</div>
 ${row('カード番号','number',c.number?(r.number?fmtNum(c.number):maskNum(c.number)):'未登録',!!c.number,true)}
 ${row('有効期限','exp',c.exp||'未登録',!!c.exp,false)}
@@ -418,7 +424,7 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-e</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-f</div>`;
 }
 
 /* ====== 操作 ====== */
@@ -441,7 +447,13 @@ document.addEventListener('click',async e=>{
     case'settings':view={name:'settings'};render();break;
     case'back':view={name:'list',q:''};render();break;
     case'add':view={name:'edit',id:null,draft:newDraft(),brandTouched:false};render();break;
-    case'open':view={name:'detail',id:t.dataset.id,reveal:{}};render();break;
+    case'open':
+      /* タッチ端末のウォレット風表示：1回目のタップで重なりを透過して全体を表示、2回目で詳細を開く */
+      if(theme==='wallet'&&view.name==='list'&&t.classList.contains('wcard')&&t.nextElementSibling&&!t.classList.contains('peek')&&window.matchMedia('(hover:none)').matches){
+        document.querySelectorAll('.wcard.peek').forEach(x=>x.classList.remove('peek'));
+        t.classList.add('peek');break;
+      }
+      view={name:'detail',id:t.dataset.id,reveal:{}};render();break;
     case'edit':view={name:'edit',id:view.id,draft:newDraft(curCard()),brandTouched:true};render();break;
     case'cancel':view=view.id?{name:'detail',id:view.id,reveal:{}}:{name:'list',q:''};render();break;
     case'reveal':view.reveal[t.dataset.f]=!view.reveal[t.dataset.f];render();break;
