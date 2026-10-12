@@ -459,8 +459,8 @@ function detailHTML(){
 ${theme==='wallet'?wface(c,false):`<div class="cardtile" style="--a:${a};--b:${b};--fg:${fg};cursor:default"><div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}${cyc(c)?`<span class="cy">${esc(cyc(c))}</span>`:''}</div></div></div>`}
 ${row('カード番号','number',c.number?(r.number?fmtNum(c.number):maskNum(c.number)):'未登録',!!c.number,true)}
 ${row('有効期限','exp',c.exp||'未登録',!!c.exp,false)}
-${cyc(c)?row('締め日・支払日','cyc',(c.close?'毎月'+dlab(c.close)+'締め':'')+(c.close&&c.pay?'・':'')+(c.pay?(c.close&&c.pay?'':'毎月')+dlab(c.pay)+'払い':''),false,false):''}
 ${row('セキュリティコード','cvv',c.cvv?(r.cvv?c.cvv:'•'.repeat(c.cvv.length)):'未登録',!!c.cvv,true)}
+${cyc(c)?row('締め日・支払日','cyc',(c.close?'毎月'+dlab(c.close)+'締め':'')+(c.close&&c.pay?'・':'')+(c.pay?(c.close&&c.pay?'':'毎月')+dlab(c.pay)+'払い':''),false,false):''}
 ${(c.front||c.back)?`<h3>カード画像</h3><div class="imgs">${img(c.front,'表面')}${img(c.back,'裏面')}</div>`:''}`;
 }
 
@@ -534,7 +534,7 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-p</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-q</div>`;
 }
 
 /* ====== 操作 ====== */
