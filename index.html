@@ -38,12 +38,13 @@ label{display:block;margin:12px 0;font-size:13px;color:var(--sub)}
 .err{color:var(--danger);font-size:14px;margin-top:10px;min-height:20px;text-align:center}
 .note{font-size:12.5px;color:var(--sub);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:14px 0}
 .or{color:var(--sub);font-size:13px;margin:22px 0 -10px}
-.cardtile{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;color:var(--fg,#fff);border-radius:16px;padding:16px 18px;margin:0 0 12px;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.cardtile{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;color:var(--fg,#fff);border-radius:16px;padding:10px 16px;min-height:76px;margin:0 0 10px;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 4px 14px rgba(0,0,0,.18)}
 .cardtile .n{font-size:18px;font-weight:700;word-break:break-all}
+.cardtile .l4{font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em;margin-left:10px;font-size:14px}
 .cardtile .b{font-size:13px;opacity:.9;margin-top:2px}
 .cardtile .d{font-family:ui-monospace,Menlo,monospace;letter-spacing:.08em;margin-top:14px;font-size:14px;opacity:.95}
 .cardtile .tl{min-width:0;flex:1}
-.cardtile .thumb{flex:none;width:104px;aspect-ratio:1.586;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.cardtile .thumb{flex:none;width:84px;aspect-ratio:1.586;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.35)}
 .empty{text-align:center;color:var(--sub);padding:56px 0}
 .tools{display:flex;gap:8px;margin:0 0 12px}
 .tools input{flex:1;min-width:0;margin-top:0}
@@ -418,7 +419,7 @@ function wface(c,btn){
   return btn?`<button class="wcard${c.id===frontId?' raised':''}" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b};--fg:${fg}">${inner}</button>`:`<div class="wcard solo" style="--a:${a};--b:${b};--fg:${fg}">${inner}</div>`;
 }
 function tile(c){const[a,b,fg]=cardColors(c);
-  return`<button class="cardtile" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b};--fg:${fg}">${wm(c.name)}<div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}</div><div class="d">${esc(maskNum(c.number))}</div></div>${c.front?`<img class="thumb" src="${esc(c.front)}" alt="">`:''}</button>`}
+  return`<button class="cardtile" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b};--fg:${fg}">${wm(c.name)}<div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}${c.number?`<span class="l4">${esc(c.number.replace(/\D/g,'').slice(-4))}</span>`:''}</div></div>${c.front?`<img class="thumb" src="${esc(c.front)}" alt="">`:''}</button>`}
 
 function curCard(){return vault.cards.find(c=>c.id===view.id)}
 function detailHTML(){
@@ -498,7 +499,7 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-l</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-m</div>`;
 }
 
 /* ====== 操作 ====== */
