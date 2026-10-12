@@ -46,6 +46,14 @@ label{display:block;margin:12px 0;font-size:13px;color:var(--sub)}
 .cardtile .tl{min-width:0;flex:1}
 .cardtile .thumb{flex:none;width:84px;aspect-ratio:1.586;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.35)}
 .empty{text-align:center;color:var(--sub);padding:56px 0}
+.rrow{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px 8px 14px;margin:0 0 8px}
+.rrow .rn{flex:1;min-width:0;display:flex;flex-direction:column}
+.rrow .rn b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .rn small{opacity:.65}
+.rrow .mv{width:48px;height:44px;margin:0;padding:0;font-size:18px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--accent)}
+.rrow .mv:disabled{opacity:.3}
+.reo{width:100%;margin:0 0 12px}
+.hint{opacity:.7;font-size:13px;margin:0 0 12px}
 .tools{display:flex;gap:8px;margin:0 0 12px}
 .tools input{flex:1;min-width:0;margin-top:0}
 .tools select{width:auto;max-width:46%;margin-top:0}
@@ -228,7 +236,7 @@ function hslOf(d){
   if(!HEX.test(d.color||''))return[210,60,82];
   const[h,s,l]=hex2hsl(d.color);return[h,s,Math.max(20,Math.min(95,l))];
 }
-const SORTS=[['added','登録順'],['added-desc','登録が新しい順'],['name','カード名順'],['brand','ブランド順'],['exp','有効期限が近い順']];
+const SORTS=[['added','登録順'],['added-desc','登録が新しい順'],['name','カード名順'],['brand','ブランド順'],['exp','有効期限が近い順'],['manual','自分で並べ替え']];
 function sortCards(list){
   const s=vault.sort||'added',c=[...list];
   const nm=(a,b)=>(a.name||'').localeCompare(b.name||'','ja');
@@ -236,6 +244,7 @@ function sortCards(list){
   if(s==='added-desc')c.reverse();
   else if(s==='name')c.sort(nm);
   else if(s==='brand')c.sort((a,b)=>BRANDS.indexOf(a.brand)-BRANDS.indexOf(b.brand)||nm(a,b));
+  else if(s==='manual'){const o=vault.order||[];const ix=x=>{const i=o.indexOf(x.id);return i<0?1e6:i};c.sort((a,b)=>ix(a)-ix(b))}
   else if(s==='exp')c.sort((a,b)=>ex(a)-ex(b)||nm(a,b));
   return c;
 }
@@ -368,6 +377,7 @@ function render(){
     case'detail':a.innerHTML=detailHTML();break;
     case'edit':a.innerHTML=editHTML();break;
     case'settings':a.innerHTML=settingsHTML();break;
+    case'reorder':a.innerHTML=reorderHTML();break;
     default:a.innerHTML='';
   }
   const h=a.querySelector('header');
@@ -403,8 +413,15 @@ function listHTML(){
   const tools=all.length>=2?`<div class="tools"><input id="q" placeholder="検索" value="${esc(view.q||'')}"><select id="sort" aria-label="並び替え">${SORTS.map(([v,l])=>`<option value="${v}" ${v===s?'selected':''}>${l}</option>`).join('')}</select></div>`:'';
   return`<header><span class="l">カード一覧</span><span><button data-act="settings">設定</button><button data-act="lock">ロック</button></span></header>
 ${tools}
+${s==='manual'&&all.length>=2?'<button class="outline reo" data-act="reorder">↕ 並べ替えを編集</button>':''}
 <div id="cardlist">${listBody()}</div>
 <button class="fab" data-act="add" aria-label="追加">＋</button>`;
+}
+function reorderHTML(){
+  const L=sortCards(vault.cards);
+  return`<header><button data-act="back">‹ 戻る</button><b>並べ替え</b><button data-act="back">完了</button></header>
+<p class="hint">▲▼で好きな順番に動かせます。この順番は「自分で並べ替え」で表示されます。</p>
+${L.map((c,i)=>`<div class="rrow"><div class="rn"><b>${esc(c.name)}</b><small>${esc(c.brand)}${c.number?' '+esc(c.number.replace(/\D/g,'').slice(-4)):''}</small></div><button type="button" class="mv" data-act="mv" data-id="${esc(c.id)}" data-d="-1" ${i===0?'disabled':''} aria-label="上へ">▲</button><button type="button" class="mv" data-act="mv" data-id="${esc(c.id)}" data-d="1" ${i===L.length-1?'disabled':''} aria-label="下へ">▼</button></div>`).join('')}`;
 }
 function listBody(){
   const q=(view.q||'').toLowerCase();
@@ -499,7 +516,7 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-m</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-n</div>`;
 }
 
 /* ====== 操作 ====== */
@@ -524,6 +541,11 @@ document.addEventListener('click',async e=>{
     case'theme':applyTheme(t.dataset.v==='wallet'?'wallet':'classic');render();break;
     case'lock':lock();break;
     case'settings':view={name:'settings'};render();break;
+    case'reorder':view={name:'reorder'};render();break;
+    case'mv':{
+      const ord=sortCards(vault.cards).map(c=>c.id),i=ord.indexOf(t.dataset.id),j=i+(+t.dataset.d);
+      if(i>=0&&j>=0&&j<ord.length){[ord[i],ord[j]]=[ord[j],ord[i]];vault.order=ord;await persist();render()}
+      break}
     case'back':view={name:'list',q:''};render();break;
     case'add':view={name:'edit',id:null,draft:newDraft(),brandTouched:false};render();break;
     case'open':
@@ -652,7 +674,7 @@ document.addEventListener('change',async e=>{
   const t=e.target;
   if(t.id==='f-brand'){view.brandTouched=true}
   else if(t.id==='sort'){
-    try{vault.sort=t.value;frontId='';await persist();render()}catch{toast('エラーが発生しました')}
+    try{const first=t.value==='manual'&&!vault.order;if(first)vault.order=sortCards(vault.cards).map(c=>c.id);vault.sort=t.value;frontId='';await persist();if(t.value==='manual'){view={name:'reorder'}}render()}catch{toast('エラーが発生しました')}
   }
   else if(t.id==='pick-front'||t.id==='pick-back'){
     const side=t.id==='pick-front'?'front':'back',f=t.files[0];t.value='';
