@@ -413,7 +413,6 @@ function listHTML(){
   const tools=all.length>=2?`<div class="tools"><input id="q" placeholder="検索" value="${esc(view.q||'')}"><select id="sort" aria-label="並び替え">${SORTS.map(([v,l])=>`<option value="${v}" ${v===s?'selected':''}>${l}</option>`).join('')}</select></div>`:'';
   return`<header><span class="l">カード一覧</span><span><button data-act="settings">設定</button><button data-act="lock">ロック</button></span></header>
 ${tools}
-${s==='manual'&&all.length>=2?'<button class="outline reo" data-act="reorder">↕ 並べ替えを編集</button>':''}
 <div id="cardlist">${listBody()}</div>
 <button class="fab" data-act="add" aria-label="追加">＋</button>`;
 }
@@ -501,6 +500,9 @@ function settingsHTML(){
   return`<header><button data-act="back">‹ 戻る</button><b>設定</b><span></span></header>
 <h3>表示スタイル</h3>
 <div class="seg"><button data-act="theme" data-v="classic" class="${theme==='classic'?'on':''}">クラシック</button><button data-act="theme" data-v="wallet" class="${theme==='wallet'?'on':''}">ウォレット風</button></div>
+<h3>カードの並び順</h3>
+<button class="outline" data-act="reorder">↕ 並べ替えを編集</button>
+<div class="note">▲▼で好きな順番に動かせます。編集すると一覧の並び順が「自分で並べ替え」になります。</div>
 <h3>Face ID で開く</h3>
 ${pkBlock}
 <h3>マスターパスワードの変更</h3>
@@ -516,7 +518,7 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-n</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-o</div>`;
 }
 
 /* ====== 操作 ====== */
@@ -541,7 +543,10 @@ document.addEventListener('click',async e=>{
     case'theme':applyTheme(t.dataset.v==='wallet'?'wallet':'classic');render();break;
     case'lock':lock();break;
     case'settings':view={name:'settings'};render();break;
-    case'reorder':view={name:'reorder'};render();break;
+    case'reorder':
+      if(vault.cards.length<2){toast('カードが2枚以上あると並べ替えできます');break}
+      if(vault.sort!=='manual'){vault.order=sortCards(vault.cards).map(c=>c.id);vault.sort='manual';await persist()}
+      view={name:'reorder'};render();break;
     case'mv':{
       const ord=sortCards(vault.cards).map(c=>c.id),i=ord.indexOf(t.dataset.id),j=i+(+t.dataset.d);
       if(i>=0&&j>=0&&j<ord.length){[ord[i],ord[j]]=[ord[j],ord[i]];vault.order=ord;await persist();render()}
