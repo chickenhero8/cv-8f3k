@@ -63,6 +63,7 @@ label{display:block;margin:12px 0;font-size:13px;color:var(--sub)}
 .wcard img{pointer-events:none;-webkit-user-drag:none}
 .wstack.holding .wcard:not(.pop){opacity:.12}
 .wcard.pop{opacity:1!important;z-index:5;transform:translateY(-8px) scale(1.03);box-shadow:0 14px 32px rgba(0,0,0,.5)}
+.wcard.raised{z-index:5;box-shadow:0 10px 26px rgba(0,0,0,.45)}
 .cprev{border-radius:12px;padding:12px 14px;color:#fff;font-weight:700;background:linear-gradient(135deg,var(--a),var(--b));margin:6px 0 10px;word-break:break-all}
 .swatches{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:4px 0 8px}
 .sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);padding:0;margin:0;background:var(--panel);position:relative;overflow:hidden}
@@ -372,14 +373,13 @@ function listBody(){
   const q=(view.q||'').toLowerCase();
   const all=vault.cards;
   const cards=sortCards(all.filter(c=>!q||(c.name+' '+c.brand).toLowerCase().includes(q)));
-  if(theme==='wallet'&&frontId){const i=cards.findIndex(c=>c.id===frontId);if(i>=0)cards.push(cards.splice(i,1)[0])}
   if(!cards.length)return`<div class="empty">${all.length?'該当なし':'カードがまだありません<br>右下の＋から追加できます'}</div>`;
   return theme==='wallet'?`<div class="wstack">${cards.map(c=>wface(c,true)).join('')}</div>`:cards.map(tile).join('');
 }
 function wface(c,btn){
   const[a,b]=cardColors(c);
   const inner=`<span class="wt"><span class="wl"><span class="wn">${esc(c.name)}</span>${c.number?`<span class="w4">•••• ${esc(c.number.slice(-4))}</span>`:''}</span><span class="wb">${esc(c.brand)}</span></span>${btn&&c.front?`<span class="wimg"><img src="${esc(c.front)}" alt=""></span>`:''}`;
-  return btn?`<button class="wcard" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b}">${inner}</button>`:`<div class="wcard solo" style="--a:${a};--b:${b}">${inner}</div>`;
+  return btn?`<button class="wcard${c.id===frontId?' raised':''}" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b}">${inner}</button>`:`<div class="wcard solo" style="--a:${a};--b:${b}">${inner}</div>`;
 }
 function tile(c){const[a,b]=cardColors(c);
   return`<button class="cardtile" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b}"><div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}</div><div class="d">${esc(maskNum(c.number))}</div></div>${c.front?`<img class="thumb" src="${esc(c.front)}" alt="">`:''}</button>`}
@@ -454,7 +454,7 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-h</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-i</div>`;
 }
 
 /* ====== 操作 ====== */
@@ -467,6 +467,10 @@ function collectForm(){
 const setErr=m=>{const e=$('#err');if(e)e.textContent=m};
 
 document.addEventListener('click',async e=>{
+  /* ウォレット風：カード以外の場所をタップすると、手前に出していたカードを元に戻す */
+  if(view.name==='list'&&frontId&&Date.now()-hold.end>600&&!e.target.closest('.wcard,.tools,header,.fab')){
+    frontId='';const l=$('#cardlist');if(l)l.innerHTML=listBody();
+  }
   const t=e.target.closest('[data-act]');if(!t)return;
   const act=t.dataset.act;
   try{
