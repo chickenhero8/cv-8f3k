@@ -64,6 +64,14 @@ label{display:block;margin:12px 0;font-size:13px;color:var(--sub)}
 .wstack.holding .wcard:not(.pop){opacity:.12}
 .wcard.pop{opacity:1!important;z-index:5;transform:translateY(-8px) scale(1.03);box-shadow:0 14px 32px rgba(0,0,0,.5)}
 .wcard.raised{z-index:5;box-shadow:0 10px 26px rgba(0,0,0,.45)}
+.wm{position:absolute;left:14px;top:6px;font-size:58px;line-height:1.1;font-weight:800;color:var(--fg,#fff);opacity:.24;pointer-events:none;z-index:0}
+.wcard,.cardtile,.cprev{position:relative;overflow:hidden}
+.wcard>*:not(.wm),.cardtile>*:not(.wm),.cprev>*:not(.wm){position:relative;z-index:1}
+.cardtile .tl,.wcard .wt,.cprev .pn{padding-left:56px}
+.cardtile .tl{box-sizing:border-box}
+.hexrow{display:flex;gap:10px;align-items:center;margin:8px 0}
+.hexrow .hx{width:34px;height:34px;border-radius:8px;border:2px solid var(--line);flex:none}
+.hexrow input{flex:1;font-family:ui-monospace,Menlo,monospace;text-transform:uppercase}
 .cprev{border-radius:12px;padding:12px 14px;color:var(--fg,#fff);font-weight:700;background:linear-gradient(135deg,var(--a),var(--b));margin:6px 0 10px;word-break:break-all}
 .pal{display:grid;grid-template-columns:repeat(5,1fr);gap:12px 4px;margin:6px 0 4px}
 .pi{display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0;color:var(--text);font-size:11px;line-height:1.2;text-align:center}
@@ -184,7 +192,9 @@ async function persist(){
 /* ====== ブランド・並び替え ====== */
 const BRANDS=['Visa','Mastercard','JCB','American Express','Diners Club','Discover','UnionPay','その他'];
 const BCOL={'Visa':['#1a3a8f','#2f6bd6'],'Mastercard':['#b3261e','#e8801f'],'JCB':['#0b5e3a','#2aa66b'],'American Express':['#1d6f8f','#4ab3d4'],'Diners Club':['#3d4350','#8a8f98'],'Discover':['#c85a00','#f2a03d'],'UnionPay':['#8c1c2b','#1f6f6b'],'その他':['#4b4f58','#7c8190']};
-const PAL=[['#f7b9c9','ピンク'],['#f9bfa8','コーラル'],['#fbd39b','アプリコット'],['#f6e394','レモン'],['#b9e4c4','ミント'],['#c6e5a5','ライム'],['#aedbf3','スカイ'],['#b9c7f3','ペリウィンクル'],['#d3c0f1','ラベンダー'],['#d3d7de','ライトグレー']];
+const PAL=[['#e53935','赤'],['#fb8c00','オレンジ'],['#fdd835','黄'],['#43a047','緑'],['#29b6f6','水色'],['#1e4fd8','青'],['#8e24aa','紫'],['#ec407a','ピンク'],['#6d4c41','茶'],['#1c1c1c','黒']];
+function ini(n){const ch=Array.from(String(n||'').trim())[0];return ch?ch.toUpperCase():''}
+function wm(n){const i=ini(n);return i?`<span class="wm" aria-hidden="true">${esc(i)}</span>`:''}
 const HEX=/^#[0-9a-fA-F]{6}$/;
 function shade(hex,p){
   const n=parseInt(hex.slice(1),16);let r=n>>16,g=(n>>8)&255,b=n&255;
@@ -403,11 +413,11 @@ function listBody(){
 }
 function wface(c,btn){
   const[a,b,fg]=cardColors(c);
-  const inner=`<span class="wt"><span class="wl"><span class="wn">${esc(c.name)}</span>${c.number?`<span class="w4">•••• ${esc(c.number.slice(-4))}</span>`:''}</span><span class="wb">${esc(c.brand)}</span></span>${btn&&c.front?`<span class="wimg"><img src="${esc(c.front)}" alt=""></span>`:''}`;
+  const inner=`${wm(c.name)}<span class="wt"><span class="wl"><span class="wn">${esc(c.name)}</span>${c.number?`<span class="w4">•••• ${esc(c.number.slice(-4))}</span>`:''}</span><span class="wb">${esc(c.brand)}</span></span>${btn&&c.front?`<span class="wimg"><img src="${esc(c.front)}" alt=""></span>`:''}`;
   return btn?`<button class="wcard${c.id===frontId?' raised':''}" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b};--fg:${fg}">${inner}</button>`:`<div class="wcard solo" style="--a:${a};--b:${b};--fg:${fg}">${inner}</div>`;
 }
 function tile(c){const[a,b,fg]=cardColors(c);
-  return`<button class="cardtile" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b};--fg:${fg}"><div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}</div><div class="d">${esc(maskNum(c.number))}</div></div>${c.front?`<img class="thumb" src="${esc(c.front)}" alt="">`:''}</button>`}
+  return`<button class="cardtile" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b};--fg:${fg}">${wm(c.name)}<div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}</div><div class="d">${esc(maskNum(c.number))}</div></div>${c.front?`<img class="thumb" src="${esc(c.front)}" alt="">`:''}</button>`}
 
 function curCard(){return vault.cards.find(c=>c.id===view.id)}
 function detailHTML(){
@@ -438,12 +448,14 @@ function editHTML(){
 <label>セキュリティコード<input id="f-cvv" inputmode="numeric" autocomplete="off" maxlength="4" value="${esc(d.cvv)}"></label>
 </div>
 <h3>カードの色</h3>
-<div class="cprev" id="cprev" style="--a:${cc[0]};--b:${cc[1]};--fg:${cc[2]}">${esc(d.name||'カード名')}</div>
+<div class="cprev" id="cprev" style="--a:${cc[0]};--b:${cc[1]};--fg:${cc[2]}">${wm(d.name||'カード名')}<div class="pn">${esc(d.name||'カード名')}</div></div>
 <div class="pal">
 <button type="button" class="pi ${!d.color?'on':''}" data-act="color" data-v=""><span class="dot" style="background:linear-gradient(135deg,${bc[0]},${bc[1]})"></span><span class="swn">自動<br>（ブランド色）</span></button>
 ${PAL.map(([c,n])=>`<button type="button" class="pi ${d.color===c?'on':''}" data-act="color" data-v="${c}"><span class="dot" style="background:${c}"></span><span class="swn">${n}</span></button>`).join('')}
 </div>
-<h3>好きな色をスライダーで選ぶ</h3>
+<h3>色コードで指定</h3>
+<div class="hexrow"><span class="hx" id="hxs" style="background:${HEX.test(d.color||'')?d.color:'transparent'}"></span><input id="c-hex" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="#1E4FD8" value="${HEX.test(d.color||'')?d.color.toUpperCase():''}"></div>
+<h3>スライダーで微調整</h3>
 <div class="sl">
 <label>色合い<input type="range" id="c-h" min="0" max="360" value="${ch}" style="--trk:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"></label>
 <label>あざやかさ<input type="range" id="c-s" min="0" max="100" value="${cs}" style="--trk:linear-gradient(90deg,hsl(${ch},0%,${cl}%),hsl(${ch},100%,${cl}%))"></label>
@@ -485,7 +497,7 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-j</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-k</div>`;
 }
 
 /* ====== 操作 ====== */
@@ -604,6 +616,20 @@ document.addEventListener('input',e=>{
     $('#c-s').style.setProperty('--trk','linear-gradient(90deg,hsl('+h+',0%,'+l+'%),hsl('+h+',100%,'+l+'%))');
     $('#c-l').style.setProperty('--trk','linear-gradient(90deg,hsl('+h+','+sa+'%,20%),hsl('+h+','+sa+'%,95%))');
     document.querySelectorAll('.pal .pi').forEach(x=>x.classList.remove('on'));
+    const hf=$('#c-hex');if(hf)hf.value=hex.toUpperCase();const hs=$('#hxs');if(hs)hs.style.background=hex;
+  }
+  else if(t.id==='c-hex'){
+    let v=t.value.trim().replace(/^#?/,'#');
+    if(/^#[0-9a-fA-F]{3}$/.test(v))v='#'+v[1]+v[1]+v[2]+v[2]+v[3]+v[3];
+    if(HEX.test(v)){
+      v=v.toLowerCase();view.draft.color=v;
+      const cc=cardColors({color:v}),p=$('#cprev');
+      if(p){p.style.setProperty('--a',cc[0]);p.style.setProperty('--b',cc[1]);p.style.setProperty('--fg',cc[2])}
+      const hs=$('#hxs');if(hs)hs.style.background=v;
+      const[h,sa,l]=hslOf({color:v});
+      $('#c-h').value=h;$('#c-s').value=sa;$('#c-l').value=l;
+      document.querySelectorAll('.pal .pi').forEach(x=>x.classList.toggle('on',x.dataset.v===v));
+    }
   }
   else if(t.id==='f-number'){
     const n=t.value.replace(/\D/g,'').slice(0,19);t.value=fmtNum(n);
