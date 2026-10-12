@@ -71,7 +71,7 @@ label{display:block;margin:12px 0;font-size:13px;color:var(--sub)}
 label.sw.custom{background:conic-gradient(red,yellow,lime,aqua,blue,magenta,red);display:block}
 .sw.custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;padding:0;border:0}
 @media (hover:hover){.wcard:hover~.wcard{opacity:.12}}
-.wcard.solo{box-shadow:0 8px 24px rgba(0,0,0,.45);margin:4px 0 12px}
+.wcard.solo{height:auto;box-shadow:0 8px 24px rgba(0,0,0,.45);margin:4px 0 12px}
 .seg{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px}
 .seg button{flex:1;color:var(--text);padding:10px}
 .seg button.on{background:var(--accent);color:#fff}
@@ -378,7 +378,7 @@ function listBody(){
 }
 function wface(c,btn){
   const[a,b]=cardColors(c);
-  const inner=`<span class="wt"><span class="wl"><span class="wn">${esc(c.name)}</span>${c.number?`<span class="w4">•••• ${esc(c.number.slice(-4))}</span>`:''}</span><span class="wb">${esc(c.brand)}</span></span>${c.front?`<span class="wimg"><img src="${esc(c.front)}" alt=""></span>`:''}`;
+  const inner=`<span class="wt"><span class="wl"><span class="wn">${esc(c.name)}</span>${c.number?`<span class="w4">•••• ${esc(c.number.slice(-4))}</span>`:''}</span><span class="wb">${esc(c.brand)}</span></span>${btn&&c.front?`<span class="wimg"><img src="${esc(c.front)}" alt=""></span>`:''}`;
   return btn?`<button class="wcard" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b}">${inner}</button>`:`<div class="wcard solo" style="--a:${a};--b:${b}">${inner}</div>`;
 }
 function tile(c){const[a,b]=cardColors(c);
@@ -393,10 +393,10 @@ function detailHTML(){
   const img=(src,cap)=>src?`<figure><figcaption>${cap}</figcaption><img src="${src}" alt="${cap}" data-act="zoom"></figure>`:`<figure><figcaption>${cap}</figcaption><div class="ph">未登録</div></figure>`;
   return`<header><button data-act="back">‹ 戻る</button><b>${esc(c.name)}</b><button data-act="edit">編集</button></header>
 ${theme==='wallet'?wface(c,false):`<div class="cardtile" style="--a:${a};--b:${b};cursor:default"><div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}</div></div></div>`}
-<div class="imgs">${img(c.front,'表面')}${img(c.back,'裏面')}</div>
 ${row('カード番号','number',c.number?(r.number?fmtNum(c.number):maskNum(c.number)):'未登録',!!c.number,true)}
 ${row('有効期限','exp',c.exp||'未登録',!!c.exp,false)}
-${row('セキュリティコード','cvv',c.cvv?(r.cvv?c.cvv:'•'.repeat(c.cvv.length)):'未登録',!!c.cvv,true)}`;
+${row('セキュリティコード','cvv',c.cvv?(r.cvv?c.cvv:'•'.repeat(c.cvv.length)):'未登録',!!c.cvv,true)}
+${(c.front||c.back)?`<h3>カード画像</h3><div class="imgs">${img(c.front,'表面')}${img(c.back,'裏面')}</div>`:''}`;
 }
 
 function editHTML(){
@@ -404,7 +404,7 @@ function editHTML(){
   const prev=(s,cap)=>s?`<img src="${s}" alt="${cap}">`:`<div class="ph">${cap}</div>`;
   return`<header><button data-act="cancel">キャンセル</button><b>${view.id?'カードを編集':'カードを追加'}</b><span></span></header>
 <form id="cardform" autocomplete="off">
-<label>カード名<input id="f-name" value="${esc(d.name)}" maxlength="50" placeholder="例：楽天カード" autocomplete="off"></label>
+<label>カード名<input id="f-name" enterkeyhint="next" value="${esc(d.name)}" maxlength="50" placeholder="例：楽天カード" autocomplete="off"></label>
 <label>ブランド<select id="f-brand">${BRANDS.map(b=>`<option ${b===d.brand?'selected':''}>${b}</option>`).join('')}</select></label>
 <label>カード番号<input id="f-number" inputmode="numeric" autocomplete="off" maxlength="23" value="${esc(fmtNum(d.number))}"></label>
 <div class="row2">
@@ -454,7 +454,7 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-g</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-h</div>`;
 }
 
 /* ====== 操作 ====== */
@@ -550,16 +550,31 @@ document.addEventListener('pointercancel',()=>endHold(false));
 document.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('.wcard'))e.preventDefault()});
 $('#lb').addEventListener('click',()=>{$('#lb').classList.remove('on');$('#lb img').src=''});
 
+/* 入力欄の自動移動：名前(Enter)→番号(桁数が揃うと)→有効期限(4桁で)→セキュリティコード */
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  const id=e.target&&e.target.id;
+  const next={'f-name':'f-number','f-number':'f-exp','f-exp':'f-cvv'}[id];
+  if(next){e.preventDefault();const n=$('#'+next);if(n)n.focus()}
+  else if(id==='f-cvv'){e.preventDefault();e.target.blur()}
+});
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.id==='q'){view.q=t.value;const l=$('#cardlist');if(l)l.innerHTML=listBody()}
   else if(t.id==='f-number'){
     const n=t.value.replace(/\D/g,'').slice(0,19);t.value=fmtNum(n);
     if(!view.brandTouched){const b=detect(n);if(b)$('#f-brand').value=b}
+    const br=$('#f-brand').value,want=br==='American Express'?15:br==='Diners Club'?14:br==='UnionPay'?0:16;
+    if(want&&n.length===want&&e.inputType&&e.inputType.startsWith('insert')&&t.selectionStart===t.value.length)$('#f-exp').focus();
   }else if(t.id==='f-exp'){
     let v=t.value.replace(/\D/g,'').slice(0,4);
     if(v.length>=3)v=v.slice(0,2)+'/'+v.slice(2);t.value=v;
-  }else if(t.id==='f-cvv'){t.value=t.value.replace(/\D/g,'').slice(0,4)}
+    if(v.length===5&&e.inputType&&e.inputType.startsWith('insert'))$('#f-cvv').focus();
+  }else if(t.id==='f-cvv'){
+    t.value=t.value.replace(/\D/g,'').slice(0,4);
+    const need=$('#f-brand').value==='American Express'?4:3;
+    if(t.value.length===need&&e.inputType&&e.inputType.startsWith('insert'))t.blur();
+  }
 });
 document.addEventListener('change',async e=>{
   const t=e.target;
