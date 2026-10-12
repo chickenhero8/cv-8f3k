@@ -59,8 +59,17 @@ label{display:block;margin:12px 0;font-size:13px;color:var(--sub)}
 .wcard .wb{font-size:12px;opacity:.9;white-space:nowrap;padding-top:3px}
 .wcard .wimg{display:flex;flex:1;min-height:0;margin-top:28px;justify-content:center;align-items:center}
 .wcard .wimg img{height:100%;max-width:100%;object-fit:contain;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.35)}
-.wcard{transition:opacity .15s}
-.wcard.peek~.wcard{opacity:.12}
+.wcard{transition:opacity .15s,transform .15s,box-shadow .15s;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:pan-y}
+.wcard img{pointer-events:none;-webkit-user-drag:none}
+.wstack.holding .wcard:not(.pop){opacity:.12}
+.wcard.pop{opacity:1!important;z-index:5;transform:translateY(-8px) scale(1.03);box-shadow:0 14px 32px rgba(0,0,0,.5)}
+.cprev{border-radius:12px;padding:12px 14px;color:#fff;font-weight:700;background:linear-gradient(135deg,var(--a),var(--b));margin:6px 0 10px;word-break:break-all}
+.swatches{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:4px 0 8px}
+.sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);padding:0;margin:0;background:var(--panel);position:relative;overflow:hidden}
+.sw.on{outline:3px solid var(--accent);outline-offset:2px}
+.sw.auto{width:auto;border-radius:17px;padding:0 12px;font-size:13px;color:var(--text)}
+label.sw.custom{background:conic-gradient(red,yellow,lime,aqua,blue,magenta,red);display:block}
+.sw.custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;padding:0;border:0}
 @media (hover:hover){.wcard:hover~.wcard{opacity:.12}}
 .wcard.solo{box-shadow:0 8px 24px rgba(0,0,0,.45);margin:4px 0 12px}
 .seg{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px}
@@ -152,6 +161,8 @@ let lastView='';
 let fails=0,lockUntil=0;
 let pkCache=null;      // 保存済みパスキー情報（Face ID ボタンの表示用）
 let pendingPk=null;
+let frontId='';                       // ウォレット風：長押しで最前面にしたカード
+let hold={t:null,el:null,x:0,y:0,on:false,end:0};
 let theme='classic';
 try{theme=localStorage.getItem('cv-theme')==='wallet'?'wallet':'classic'}catch{}
 function applyTheme(t){
@@ -168,6 +179,17 @@ async function persist(){
 /* ====== ブランド・並び替え ====== */
 const BRANDS=['Visa','Mastercard','JCB','American Express','Diners Club','Discover','UnionPay','その他'];
 const BCOL={'Visa':['#1a3a8f','#2f6bd6'],'Mastercard':['#b3261e','#e8801f'],'JCB':['#0b5e3a','#2aa66b'],'American Express':['#1d6f8f','#4ab3d4'],'Diners Club':['#3d4350','#8a8f98'],'Discover':['#c85a00','#f2a03d'],'UnionPay':['#8c1c2b','#1f6f6b'],'その他':['#4b4f58','#7c8190']};
+const SW=['#1a3a8f','#b3261e','#0b5e3a','#6a1b9a','#c85a00','#00796b','#37474f','#111111','#ad1457','#5d4037'];
+function shade(hex,p){
+  const n=parseInt(hex.slice(1),16);let r=n>>16,g=(n>>8)&255,b=n&255;
+  const t=p<0?0:255,q=Math.abs(p);
+  r=Math.round((t-r)*q+r);g=Math.round((t-g)*q+g);b=Math.round((t-b)*q+b);
+  return'#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function cardColors(c){
+  if(/^#[0-9a-fA-F]{6}$/.test(c.color||''))return[shade(c.color,-.25),shade(c.color,.18)];
+  return BCOL[c.brand]||BCOL['その他'];
+}
 const SORTS=[['added','登録順'],['added-desc','登録が新しい順'],['name','カード名順'],['brand','ブランド順'],['exp','有効期限が近い順']];
 function sortCards(list){
   const s=vault.sort||'added',c=[...list];
@@ -223,7 +245,7 @@ document.addEventListener('visibilitychange',()=>{
   else if(key&&Date.now()-hiddenAt>60000)lock();
 });
 function lock(){
-  key=null;vault=null;meta=null;pendingPk=null;clearTimeout(idleT);
+  key=null;vault=null;meta=null;pendingPk=null;frontId='';clearTimeout(idleT);
   $('#lb').classList.remove('on');
   view={name:'lock'};render();
 }
@@ -350,22 +372,23 @@ function listBody(){
   const q=(view.q||'').toLowerCase();
   const all=vault.cards;
   const cards=sortCards(all.filter(c=>!q||(c.name+' '+c.brand).toLowerCase().includes(q)));
+  if(theme==='wallet'&&frontId){const i=cards.findIndex(c=>c.id===frontId);if(i>=0)cards.push(cards.splice(i,1)[0])}
   if(!cards.length)return`<div class="empty">${all.length?'該当なし':'カードがまだありません<br>右下の＋から追加できます'}</div>`;
   return theme==='wallet'?`<div class="wstack">${cards.map(c=>wface(c,true)).join('')}</div>`:cards.map(tile).join('');
 }
 function wface(c,btn){
-  const[a,b]=BCOL[c.brand]||BCOL['その他'];
+  const[a,b]=cardColors(c);
   const inner=`<span class="wt"><span class="wl"><span class="wn">${esc(c.name)}</span>${c.number?`<span class="w4">•••• ${esc(c.number.slice(-4))}</span>`:''}</span><span class="wb">${esc(c.brand)}</span></span>${c.front?`<span class="wimg"><img src="${esc(c.front)}" alt=""></span>`:''}`;
   return btn?`<button class="wcard" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b}">${inner}</button>`:`<div class="wcard solo" style="--a:${a};--b:${b}">${inner}</div>`;
 }
-function tile(c){const[a,b]=BCOL[c.brand]||BCOL['その他'];
+function tile(c){const[a,b]=cardColors(c);
   return`<button class="cardtile" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b}"><div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}</div><div class="d">${esc(maskNum(c.number))}</div></div>${c.front?`<img class="thumb" src="${esc(c.front)}" alt="">`:''}</button>`}
 
 function curCard(){return vault.cards.find(c=>c.id===view.id)}
 function detailHTML(){
   const c=curCard();if(!c){view={name:'list'};return listHTML()}
   const r=view.reveal||{};
-  const [a,b]=BCOL[c.brand]||BCOL['その他'];
+  const [a,b]=cardColors(c);
   const row=(label,f,disp,has,canHide)=>`<div class="field"><div><small>${label}</small><div class="val">${esc(disp)}</div></div><div class="btns">${canHide&&has?`<button data-act="reveal" data-f="${f}">${r[f]?'隠す':'表示'}</button>`:''}${has?`<button class="copy" data-act="copy" data-f="${f}">コピー</button>`:''}</div></div>`;
   const img=(src,cap)=>src?`<figure><figcaption>${cap}</figcaption><img src="${src}" alt="${cap}" data-act="zoom"></figure>`:`<figure><figcaption>${cap}</figcaption><div class="ph">未登録</div></figure>`;
   return`<header><button data-act="back">‹ 戻る</button><b>${esc(c.name)}</b><button data-act="edit">編集</button></header>
@@ -387,6 +410,13 @@ function editHTML(){
 <div class="row2">
 <label>有効期限（MM/YY）<input id="f-exp" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="MM/YY" value="${esc(d.exp)}"></label>
 <label>セキュリティコード<input id="f-cvv" inputmode="numeric" autocomplete="off" maxlength="4" value="${esc(d.cvv)}"></label>
+</div>
+<h3>カードの色</h3>
+<div class="cprev" style="--a:${cardColors(d)[0]};--b:${cardColors(d)[1]}">${esc(d.name||'カード名')}</div>
+<div class="swatches">
+<button type="button" class="sw auto ${!d.color?'on':''}" data-act="color" data-v="">自動</button>
+${SW.map(c=>`<button type="button" class="sw ${d.color===c?'on':''}" data-act="color" data-v="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}
+<label class="sw custom ${d.color&&!SW.includes(d.color)?'on':''}"><input type="color" id="f-color" value="${/^#[0-9a-fA-F]{6}$/.test(d.color||'')?d.color:'#2f5bea'}" aria-label="色を選ぶ"></label>
 </div>
 <h3>カード画像</h3>
 <div class="imgpick">
@@ -424,11 +454,11 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-f</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-g</div>`;
 }
 
 /* ====== 操作 ====== */
-function newDraft(c){return c?{name:c.name,brand:c.brand,number:c.number||'',exp:c.exp||'',cvv:c.cvv||'',front:c.front||'',back:c.back||''}:{name:'',brand:'Visa',number:'',exp:'',cvv:'',front:'',back:''}}
+function newDraft(c){return c?{name:c.name,brand:c.brand,number:c.number||'',exp:c.exp||'',cvv:c.cvv||'',front:c.front||'',back:c.back||'',color:c.color||''}:{name:'',brand:'Visa',number:'',exp:'',cvv:'',front:'',back:'',color:''}}
 function collectForm(){
   const d=view.draft;
   d.name=$('#f-name').value.trim();d.brand=$('#f-brand').value;
@@ -448,11 +478,7 @@ document.addEventListener('click',async e=>{
     case'back':view={name:'list',q:''};render();break;
     case'add':view={name:'edit',id:null,draft:newDraft(),brandTouched:false};render();break;
     case'open':
-      /* タッチ端末のウォレット風表示：1回目のタップで重なりを透過して全体を表示、2回目で詳細を開く */
-      if(theme==='wallet'&&view.name==='list'&&t.classList.contains('wcard')&&t.nextElementSibling&&!t.classList.contains('peek')&&window.matchMedia('(hover:none)').matches){
-        document.querySelectorAll('.wcard.peek').forEach(x=>x.classList.remove('peek'));
-        t.classList.add('peek');break;
-      }
+      if(Date.now()-hold.end<600)break;   /* 長押しを離した直後のクリックは無視 */
       view={name:'detail',id:t.dataset.id,reveal:{}};render();break;
     case'edit':view={name:'edit',id:view.id,draft:newDraft(curCard()),brandTouched:true};render();break;
     case'cancel':view=view.id?{name:'detail',id:view.id,reveal:{}}:{name:'list',q:''};render();break;
@@ -463,6 +489,7 @@ document.addEventListener('click',async e=>{
     case'zoom':$('#lb img').src=t.src;$('#lb').classList.add('on');break;
     case'pick':collectForm();$('#pick-'+t.dataset.side).click();break;
     case'clearimg':collectForm();view.draft[t.dataset.side]='';render();break;
+    case'color':collectForm();view.draft.color=t.dataset.v;render();break;
     case'delete':
       if(confirm('このカードを削除しますか？この操作は取り消せません。')){
         vault.cards=vault.cards.filter(c=>c.id!==view.id);await persist();view={name:'list',q:''};render();toast('削除しました');}
@@ -494,6 +521,33 @@ document.addEventListener('click',async e=>{
   }
   }catch(err){toast('エラーが発生しました')}
 });
+/* ウォレット風：長押しで他のカードを透過し、離すとそのカードを最前面にする */
+document.addEventListener('pointerdown',e=>{
+  const el=e.target.closest&&e.target.closest('.wstack .wcard');
+  if(!el||view.name!=='list')return;
+  clearTimeout(hold.t);
+  hold={t:null,el,x:e.clientX,y:e.clientY,on:false,end:hold.end};
+  hold.t=setTimeout(()=>{
+    hold.on=true;
+    const st=el.closest('.wstack');if(st)st.classList.add('holding');
+    el.classList.add('pop');
+    try{if(navigator.vibrate)navigator.vibrate(10)}catch{}
+  },420);
+});
+document.addEventListener('pointermove',e=>{
+  if(hold.t&&!hold.on&&Math.hypot(e.clientX-hold.x,e.clientY-hold.y)>10){clearTimeout(hold.t);hold.t=null;hold.el=null}
+});
+function endHold(commit){
+  clearTimeout(hold.t);hold.t=null;
+  if(!hold.on){hold.el=null;return}
+  const id=hold.el&&hold.el.dataset.id;
+  hold.on=false;hold.el=null;hold.end=Date.now();
+  if(commit&&id)frontId=id;
+  const l=$('#cardlist');if(l)l.innerHTML=listBody();
+}
+document.addEventListener('pointerup',()=>endHold(true));
+document.addEventListener('pointercancel',()=>endHold(false));
+document.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('.wcard'))e.preventDefault()});
 $('#lb').addEventListener('click',()=>{$('#lb').classList.remove('on');$('#lb img').src=''});
 
 document.addEventListener('input',e=>{
@@ -510,8 +564,9 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',async e=>{
   const t=e.target;
   if(t.id==='f-brand'){view.brandTouched=true}
+  else if(t.id==='f-color'){collectForm();view.draft.color=t.value;render()}
   else if(t.id==='sort'){
-    try{vault.sort=t.value;await persist();render()}catch{toast('エラーが発生しました')}
+    try{vault.sort=t.value;frontId='';await persist();render()}catch{toast('エラーが発生しました')}
   }
   else if(t.id==='pick-front'||t.id==='pick-back'){
     const side=t.id==='pick-front'?'front':'back',f=t.files[0];t.value='';
