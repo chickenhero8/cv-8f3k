@@ -39,7 +39,10 @@ label{display:block;margin:12px 0;font-size:13px;color:var(--sub)}
 .note{font-size:12.5px;color:var(--sub);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:14px 0}
 .or{color:var(--sub);font-size:13px;margin:22px 0 -10px}
 .cardtile{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;color:var(--fg,#fff);border-radius:16px;padding:10px 16px;min-height:76px;margin:0 0 10px;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 4px 14px rgba(0,0,0,.18)}
-.cardtile .n{font-size:18px;font-weight:700;word-break:break-all}
+.cardtile .n{font-size:18px;font-weight:700;white-space:nowrap;overflow:hidden}
+.cardtile .cy{margin-left:10px;font-size:13px;white-space:nowrap}
+.wcard .wimg{gap:14px}
+.wcard .wcy{flex:none;font-size:13px;font-weight:700;background:rgba(0,0,0,.18);border-radius:8px;padding:5px 9px;line-height:1.3}
 .cardtile .l4{font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em;margin-left:10px;font-size:14px}
 .cardtile .b{font-size:13px;opacity:.9;margin-top:2px}
 .cardtile .d{font-family:ui-monospace,Menlo,monospace;letter-spacing:.08em;margin-top:14px;font-size:14px;opacity:.95}
@@ -67,7 +70,7 @@ label{display:block;margin:12px 0;font-size:13px;color:var(--sub)}
 .wcard .w4{font-family:ui-monospace,Menlo,monospace;font-size:14px;letter-spacing:.04em;opacity:.92;white-space:nowrap;flex:none}
 .wcard .wb{font-size:12px;opacity:.9;white-space:nowrap;padding-top:3px}
 .wcard .wimg{display:flex;flex:1;min-height:0;margin-top:28px;justify-content:center;align-items:center}
-.wcard .wimg img{height:100%;max-width:100%;object-fit:contain;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.wcard .wimg img{height:100%;max-width:calc(100% - 100px);object-fit:contain;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.35)}
 .wcard{transition:opacity .15s,transform .15s,box-shadow .15s;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:pan-y}
 .wcard img{pointer-events:none;-webkit-user-drag:none}
 .wstack.holding .wcard:not(.pop){opacity:.12}
@@ -236,7 +239,12 @@ function hslOf(d){
   if(!HEX.test(d.color||''))return[210,60,82];
   const[h,s,l]=hex2hsl(d.color);return[h,s,Math.max(20,Math.min(95,l))];
 }
-const SORTS=[['added','登録順'],['added-desc','登録が新しい順'],['name','カード名順'],['brand','ブランド順'],['exp','有効期限が近い順'],['manual','自分で並べ替え']];
+const DAYOPT=['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','末'];
+const dnum=v=>v==='末'?31:(+v||99);
+const dlab=v=>v==='末'?'末日':v+'日';
+function cyc(c){const a=c.close?'締'+dlab(c.close):'',b=c.pay?'払'+dlab(c.pay):'';return a+b}
+function fitNames(){document.querySelectorAll('.cardtile .n,.wcard .wn').forEach(el=>{let f=el.classList.contains('n')?18:17;el.style.fontSize='';while(el.scrollWidth>el.clientWidth+1&&f>9){f-=.5;el.style.fontSize=f+'px'}})}
+const SORTS=[['added','登録順'],['added-desc','登録が新しい順'],['name','カード名順'],['brand','ブランド順'],['exp','有効期限が近い順'],['close','締め日順'],['pay','支払日順'],['manual','自分で並べ替え']];
 function sortCards(list){
   const s=vault.sort||'added',c=[...list];
   const nm=(a,b)=>(a.name||'').localeCompare(b.name||'','ja');
@@ -245,6 +253,8 @@ function sortCards(list){
   else if(s==='name')c.sort(nm);
   else if(s==='brand')c.sort((a,b)=>BRANDS.indexOf(a.brand)-BRANDS.indexOf(b.brand)||nm(a,b));
   else if(s==='manual'){const o=vault.order||[];const ix=x=>{const i=o.indexOf(x.id);return i<0?1e6:i};c.sort((a,b)=>ix(a)-ix(b))}
+  else if(s==='close')c.sort((a,b)=>dnum(a.close)-dnum(b.close)||dnum(a.pay)-dnum(b.pay)||nm(a,b));
+  else if(s==='pay')c.sort((a,b)=>dnum(a.pay)-dnum(b.pay)||dnum(a.close)-dnum(b.close)||nm(a,b));
   else if(s==='exp')c.sort((a,b)=>ex(a)-ex(b)||nm(a,b));
   return c;
 }
@@ -386,6 +396,7 @@ function render(){
   a.appendChild(sc);
   sc.scrollTop=same?st:0;
   const f=sc.querySelector('[autofocus]');if(f)f.focus();
+  fitNames();
 }
 
 function setupHTML(){return`<div class="center"><h1>🔐 カード金庫</h1>
@@ -431,11 +442,11 @@ function listBody(){
 }
 function wface(c,btn){
   const[a,b,fg]=cardColors(c);
-  const inner=`${wm(c.name)}<span class="wt"><span class="wl"><span class="wn">${esc(c.name)}</span>${c.number?`<span class="w4">•••• ${esc(c.number.slice(-4))}</span>`:''}</span><span class="wb">${esc(c.brand)}</span></span>${btn&&c.front?`<span class="wimg"><img src="${esc(c.front)}" alt=""></span>`:''}`;
+  const inner=`${wm(c.name)}<span class="wt"><span class="wl"><span class="wn">${esc(c.name)}</span>${c.number?`<span class="w4">•••• ${esc(c.number.slice(-4))}</span>`:''}</span><span class="wb">${esc(c.brand)}</span></span>${btn&&(c.front||cyc(c))?`<span class="wimg">${c.front?`<img src="${esc(c.front)}" alt="">`:''}${cyc(c)?`<span class="wcy">${esc(cyc(c))}</span>`:''}</span>`:''}`;
   return btn?`<button class="wcard${c.id===frontId?' raised':''}" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b};--fg:${fg}">${inner}</button>`:`<div class="wcard solo" style="--a:${a};--b:${b};--fg:${fg}">${inner}</div>`;
 }
 function tile(c){const[a,b,fg]=cardColors(c);
-  return`<button class="cardtile" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b};--fg:${fg}">${wm(c.name)}<div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}${c.number?`<span class="l4">${esc(c.number.replace(/\D/g,'').slice(-4))}</span>`:''}</div></div>${c.front?`<img class="thumb" src="${esc(c.front)}" alt="">`:''}</button>`}
+  return`<button class="cardtile" data-act="open" data-id="${esc(c.id)}" style="--a:${a};--b:${b};--fg:${fg}">${wm(c.name)}<div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}${c.number?`<span class="l4">${esc(c.number.replace(/\D/g,'').slice(-4))}</span>`:''}${cyc(c)?`<span class="cy">${esc(cyc(c))}</span>`:''}</div></div>${c.front?`<img class="thumb" src="${esc(c.front)}" alt="">`:''}</button>`}
 
 function curCard(){return vault.cards.find(c=>c.id===view.id)}
 function detailHTML(){
@@ -445,9 +456,10 @@ function detailHTML(){
   const row=(label,f,disp,has,canHide)=>`<div class="field"><div><small>${label}</small><div class="val">${esc(disp)}</div></div><div class="btns">${canHide&&has?`<button data-act="reveal" data-f="${f}">${r[f]?'隠す':'表示'}</button>`:''}${has?`<button class="copy" data-act="copy" data-f="${f}">コピー</button>`:''}</div></div>`;
   const img=(src,cap)=>src?`<figure><figcaption>${cap}</figcaption><img src="${src}" alt="${cap}" data-act="zoom"></figure>`:`<figure><figcaption>${cap}</figcaption><div class="ph">未登録</div></figure>`;
   return`<header><button data-act="back">‹ 戻る</button><b>${esc(c.name)}</b><button data-act="edit">編集</button></header>
-${theme==='wallet'?wface(c,false):`<div class="cardtile" style="--a:${a};--b:${b};--fg:${fg};cursor:default"><div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}</div></div></div>`}
+${theme==='wallet'?wface(c,false):`<div class="cardtile" style="--a:${a};--b:${b};--fg:${fg};cursor:default"><div class="tl"><div class="n">${esc(c.name)}</div><div class="b">${esc(c.brand)}${cyc(c)?`<span class="cy">${esc(cyc(c))}</span>`:''}</div></div></div>`}
 ${row('カード番号','number',c.number?(r.number?fmtNum(c.number):maskNum(c.number)):'未登録',!!c.number,true)}
 ${row('有効期限','exp',c.exp||'未登録',!!c.exp,false)}
+${cyc(c)?row('締め日・支払日','cyc',(c.close?'毎月'+dlab(c.close)+'締め':'')+(c.close&&c.pay?'・':'')+(c.pay?(c.close&&c.pay?'':'毎月')+dlab(c.pay)+'払い':''),false,false):''}
 ${row('セキュリティコード','cvv',c.cvv?(r.cvv?c.cvv:'•'.repeat(c.cvv.length)):'未登録',!!c.cvv,true)}
 ${(c.front||c.back)?`<h3>カード画像</h3><div class="imgs">${img(c.front,'表面')}${img(c.back,'裏面')}</div>`:''}`;
 }
@@ -464,6 +476,10 @@ function editHTML(){
 <div class="row2">
 <label>有効期限（MM/YY）<input id="f-exp" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="MM/YY" value="${esc(d.exp)}"></label>
 <label>セキュリティコード<input id="f-cvv" inputmode="numeric" autocomplete="off" maxlength="4" value="${esc(d.cvv)}"></label>
+</div>
+<div class="row2">
+<label>締め日<select id="f-close"><option value="">未設定</option>${DAYOPT.map(v=>`<option value="${v}" ${d.close===v?'selected':''}>${dlab(v)}</option>`).join('')}</select></label>
+<label>支払日<select id="f-pay"><option value="">未設定</option>${DAYOPT.map(v=>`<option value="${v}" ${d.pay===v?'selected':''}>${dlab(v)}</option>`).join('')}</select></label>
 </div>
 <h3>カードの色</h3>
 <div class="cprev" id="cprev" style="--a:${cc[0]};--b:${cc[1]};--fg:${cc[2]}">${wm(d.name||'カード名')}<div class="pn">${esc(d.name||'カード名')}</div></div>
@@ -518,15 +534,16 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-o</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-p</div>`;
 }
 
 /* ====== 操作 ====== */
-function newDraft(c){return c?{name:c.name,brand:c.brand,number:c.number||'',exp:c.exp||'',cvv:c.cvv||'',front:c.front||'',back:c.back||'',color:c.color||''}:{name:'',brand:'Visa',number:'',exp:'',cvv:'',front:'',back:'',color:''}}
+function newDraft(c){return c?{name:c.name,brand:c.brand,number:c.number||'',exp:c.exp||'',cvv:c.cvv||'',front:c.front||'',back:c.back||'',color:c.color||'',close:c.close||'',pay:c.pay||''}:{name:'',brand:'Visa',number:'',exp:'',cvv:'',front:'',back:'',color:'',close:'',pay:''}}
 function collectForm(){
   const d=view.draft;
   d.name=$('#f-name').value.trim();d.brand=$('#f-brand').value;
   d.number=$('#f-number').value.replace(/\D/g,'');d.exp=$('#f-exp').value.trim();d.cvv=$('#f-cvv').value.replace(/\D/g,'');
+  d.close=$('#f-close').value;d.pay=$('#f-pay').value;
 }
 const setErr=m=>{const e=$('#err');if(e)e.textContent=m};
 
@@ -636,7 +653,7 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('input',e=>{
   const t=e.target;
-  if(t.id==='q'){view.q=t.value;const l=$('#cardlist');if(l)l.innerHTML=listBody()}
+  if(t.id==='q'){view.q=t.value;const l=$('#cardlist');if(l){l.innerHTML=listBody();fitNames()}}
   else if(/^c-[hsl]$/.test(t.id)){
     const h=+$('#c-h').value,sa=+$('#c-s').value,l=+$('#c-l').value;
     const hex=hsl2hex(h,sa,l);view.draft.color=hex;
