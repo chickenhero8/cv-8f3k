@@ -66,6 +66,7 @@ label{display:block;margin:12px 0;font-size:13px;color:var(--sub)}
 .wcard.raised{z-index:5;box-shadow:0 10px 26px rgba(0,0,0,.45)}
 .wm{position:absolute;left:14px;top:6px;font-size:58px;line-height:1.1;font-weight:800;color:var(--fg,#fff);opacity:.24;pointer-events:none;z-index:0}
 .wcard,.cardtile,.cprev{position:relative;overflow:hidden}
+.wcard{z-index:0;isolation:isolate}
 .wcard>*:not(.wm),.cardtile>*:not(.wm),.cprev>*:not(.wm){position:relative;z-index:1}
 .cardtile .tl,.wcard .wt,.cprev .pn{padding-left:56px}
 .cardtile .tl{box-sizing:border-box}
@@ -497,7 +498,7 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-k</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-l</div>`;
 }
 
 /* ====== 操作 ====== */
