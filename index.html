@@ -347,7 +347,7 @@ async function finishPk(rawId,salt,out){
   await persist();pkCache=meta.pk;pendingPk=null;view.pkPending=false;render();
   toast('Face IDで開けるようになりました');
 }
-async function faceUnlock(){
+async function faceUnlock(silent){
   const info=pkCache;if(!info)return;
   try{
     const out=await prfEval(unb64(info.id),unb64(info.salt));
@@ -358,7 +358,7 @@ async function faceUnlock(){
     const v=await open(dek,rec);
     key=dek;meta={salt:unb64(rec.salt),iter:rec.iter,wrap:rec.wrap,pk:rec.pk};vault=v;
     fails=0;view={name:'list',q:''};bump();render();
-  }catch(e){toast(pkErr(e))}
+  }catch(e){if(!silent)toast(pkErr(e))}
 }
 
 /* ====== 画像 ====== */
@@ -399,6 +399,7 @@ function render(){
   sc.scrollTop=same?st:0;
   const f=sc.querySelector('[autofocus]');if(f)f.focus();
   fitNames();
+  if(view.name==='lock'&&pkCache&&!view.autoTried){view.autoTried=true;setTimeout(()=>{if(view.name==='lock')faceUnlock(true)},250)}
 }
 
 function setupHTML(){return`<div class="center"><h1>🔐 カード金庫</h1>
@@ -536,7 +537,7 @@ ${pkBlock}
 <h3>危険な操作</h3>
 <button class="outline danger" data-act="wipe">すべてのデータを削除</button>
 <div class="note">通信はCSPで完全に遮断されています。自動ロック：操作なし2分／アプリから離れて1分。コピーした内容は30秒後にクリアを試みます。</div>
-<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-r</div>`;
+<div class="sub" style="text-align:center;margin-top:18px">バージョン 2026.10.12-s</div>`;
 }
 
 /* ====== 操作 ====== */
